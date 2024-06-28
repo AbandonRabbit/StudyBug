@@ -764,3 +764,169 @@ source 配置文件目录
 通过鼠标拖拽实现
 
 rz、sz命令
+
+*需要有对源文件和目的地的读写权限*
+
+# 压缩和解压
+
+常见的压缩格式
+
+1. zip：Linux、win、Mac常用
+2. 7zip：win常用
+3. rar：win常用
+4. tar：linux、Mac常用
+5. gzip：linux、Mac常用
+
+## tar命令
+
+> - .tar：称为tarball，归档文件，简单的将文件组装到一个.tar的文件内，没有太多文件体积的减少，只是简单的封装
+> - .gz：常见为.tar.gz、gzip格式压缩，使用gzip压缩算法将文件压缩到一个文件内，可以极大的减少压缩后的体积
+
+~~~Linux
+tar [-c -v -x -f -z -C] 参数1 参数2 …… 参数n
+~~~
+
+- -c：创建压缩文件，用于压缩模式
+- -v：显示压缩，解压过程，用于查看进度
+- -x：解压模式
+- -f：要创建的文件，或解压的文件
+- -z：gzip模式，不适用-z就是普通的 tarball 格式
+- -C：选择解压的目的地，用于解压模式
+
+### 参数使用注意事项
+
+> -z选项在使用时，一般处于选项位第一个
+>
+> -f选项在使用时，**必须**在选项位最后一个
+>
+> -C选项在使用时，和解压所需的其他参数分开
+
+### 常用的 tar 解压组合
+
+~~~Linux
+//解压test.tar，将文件解压到当前目录
+tar -xvf test.tar
+
+//解压test.tar，将文件解压到指定目录(/home/admin)
+tar -xvf test.tar -C /home/admin
+
+//以Gzip模式解压test.tar.gz，将文件解压到指定目录
+tar -zxvf test.tar.gz -C /home/admin
+~~~
+
+## zip — unzip 命令
+
+将文件压缩为zip格式
+
+### 压缩文件 zip
+
+~~~Linux
+zip [-r] 参数1，参数2 …… 参数n
+~~~
+
+- -r：被压缩文件包含文件夹时，使用该选项
+- 参数1：创建的压缩文件名
+- 参数2~参数n：压缩的文件
+
+### 解压文件 unzip
+
+~~~Linux
+unzip [-d] 参数1
+~~~
+
+- -d：指定解压之后存放位置
+- 参数1：被解压的文件
+
+*解压时同名内容会替换*
+
+# MySQL安装
+
+## 5.7版本
+
+### 安装
+
+1. 配置yum仓库
+   ~~~Linux
+   //更新密钥
+   rpm --import https://repo.mysql.com/RPM-GPG-KEY-MYSQL-2022
+   
+   //安装Mysql yum库
+   rpm -Uvh http://repo.mysql.com//mysql57-community-release-el7-7.noarch.rpm
+   ~~~
+
+2. 安装MySQL
+   ~~~Linux
+   yum install -y mysql -community-server
+   ~~~
+
+3. 设置开机启动
+   ~~~Linux
+   systemctl start mysqld
+   systemctl enable mysqld
+   ~~~
+
+### 配置
+
+主要配置管理员用户的密码以及允许远程登录的权限
+
+1. 获取MySQL的初始密码
+   ~~~Linux
+   # 过滤 /var/log/mysqld.log 文件中的temporary password关键字，该文件是mysql安装运行过程中的日志文件
+   cat /var/log/mysqld.log | grep "temporary password"
+   
+   ~~~
+
+2. 登录MySQL数据库系统
+   ~~~Linux
+   执行
+   mysql -uroot -p
+   
+   输入前面获取到的初始密码
+   ~~~
+
+3. 修改 root 用户密码
+   ~~~Linux
+   ALTER USER 'root'@'localhost' IDENTIFIED BY '密码';
+   ~~~
+
+   
+
+   # Redis安装和部署
+
+1. 配置 EPEL 仓库
+
+   ~~~Linux
+   yum install -y epel-release
+   ~~~
+
+2. 安装redis
+
+   ~~~Linux
+   yum install -y redis
+   ~~~
+
+3. 设置 redis 服务
+   ~~~Linux
+   //开机自启动
+   systemctl enable redis
+   //关闭开机自启动
+   systemctl disable redis
+   //启动
+   systemctl start redis
+   //关闭
+   systemctl stop redis
+   //查看状态
+   systemctl status redis
+   ~~~
+
+4. 放行防火墙
+   ~~~Linux
+   //方式一，关闭防火墙
+   systemctl stop firewalld
+   systemctl disable firewalld
+   
+   //方式二，放行 redis 服务端口(6379)
+   firemall-cmd --add-port=6379
+   ~~~
+
+   
