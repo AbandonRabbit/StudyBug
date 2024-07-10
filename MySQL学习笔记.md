@@ -319,3 +319,26 @@ select count(distinct substring(email,1,5)) / count(*) from tb_user ;
 6. 控制索引的数据量，索引越多，维护索引结构的代价就越大
 7. 在创建表的时候尽量使用 NOT NULL 约束，方便优化器更好判断索引查询效率
 
+# SQL优化
+
+## insert优化
+
+1. 尽量使用批量插入
+2. 手动提交事务
+3. 采用数据插入
+
+## 大批量插入数据
+
+使用 load 指令插入
+
+~~~sql
+-- 客户端连接服务端时，加上参数 -–local-infile
+mysql –-local-infile -u root -p
+
+-- 设置全局参数local_infile为1，开启从本地加载文件导入数据的开关
+set global local_infile = 1;
+
+-- 执行load指令将准备好的数据，加载到表结构中
+load data local infile '/root/sql1.log' into table tb_user fields terminated by ',' lines terminated by '\n' ;
+~~~
+
