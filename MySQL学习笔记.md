@@ -1,3 +1,33 @@
+### 事务四大特性
+
+事务具有四大特性，被称为ACID：
+
+- 原子性（Atomicity）：事务是不可分割的最小操作单元，要么全部成功，要么全部失败
+- 一致性（Consistency）：事务完成时，必须使所有的数据都保持一致状态
+- 隔离性（Isolation）：数据库系统提供的隔离机制，保证事务在不受外部并发操作影响的独立环境下运行
+- 持久性（Durability）：事务一旦提交或滚回，它对数据库的改变就是永久的
+
+### 并发事务问题
+
+并发事务常常出现三种问题：
+
+| 问题       | 描述                                                         |
+| ---------- | ------------------------------------------------------------ |
+| 脏读       | 一个事务读到另外一个事务还没有提交的数据                     |
+| 不可重复读 | 一个事务先后读取同一条记录，但两次读取的数据不同，称为不可重复读 |
+| 幻读       | 一个事务按照条件查询数据时，没有对应的数据行，但在插入数据时，又发现该数据已经存在 |
+
+### 事务隔离级别
+
+事务隔离级别分为四种：
+
+| 隔离级别              | 脏读 | 不可重复读 | 幻读 |
+| --------------------- | ---- | ---------- | ---- |
+| Read uncommitted      | √    | √          | √    |
+| Read committed        | ×    | √          | √    |
+| Repeatable Read(默认) | ×    | ×          | √    |
+| Serializable          | ×    | ×          | ×    |
+
 # 用户数据管理
 
 ## 管理用户
@@ -82,6 +112,8 @@ REVOKE 权限列表 ON 数据库名.表名 FROM '用户名'@ '主机名'
 | CASE [ expr ] WHEN [ val1 ] THEN [res1] ... ELSE [ default ] END | 如果expr的值等于val1，返回 res1，... 否则返回default默认值 |
 
 # 存储引擎
+
+存储结构 表空间、段、区（大小固定 1 M）、页（大小固定 16 k）、行
 
 ## MySQL的体系结构
 
@@ -329,6 +361,8 @@ select count(distinct substring(email,1,5)) / count(*) from tb_user ;
 
 ## 大批量插入数据
 
+主键顺序插入效率大于乱序插入
+
 使用 load 指令插入
 
 ~~~sql
@@ -342,3 +376,455 @@ set global local_infile = 1;
 load data local infile '/root/sql1.log' into table tb_user fields terminated by ',' lines terminated by '\n' ;
 ~~~
 
+## 主键优化
+
+主键乱序插入会产生页分裂现象
+
+删除一行记录时，该记录只是被标记为删除，并没有进行物理删除，并且它的空间变得允许被其他记录声明使用
+
+### 主键设计原则
+
+- 尽量降低主键的长度
+- 插入数据的时，尽量选择顺序插入，选择使用AUTO_INCREMENT自增主键
+- 尽量不使用UUID作为主键或其他主键，比如身份证号
+
+## order by优化
+
+### MySQL的排序，有两种方式：
+
+- Using filesort : 通过表的索引或全表扫描，读取满足条件的数据行，然后在排序缓冲区sort buffer中完成排序操作，所有不是通过索引直接返回排序结果的排序都叫 FileSort 排序。 
+- Using index : 通过有序索引顺序扫描直接返回有序数据，这种情况即为 using index，不需要 额外排序，操作效率高。 对于以上的两种排序方式，Using index的性能高，而Using filesort的性能低，我们在优化排序 操作时，尽量要优化为 Using index。
+
+### 优化注意事项
+
+- 根据排序字段建立合适的索引，多字段排序时，也遵循最左前缀法则
+- 尽量使用覆盖索引
+- 多字段排序，一个升序一个降序，注意联合索引在创建时的规则
+- 如果不可避免的出现filesort，大数据量排序时，可以适当增大排序缓冲区大小 sort_buffer_size(默认256k)。
+
+## group by优化
+
+Using temporary 使用到临时表
+
+在分组操作时，也是需要满足最左前缀法则
+
+## limit优化
+
+通过覆盖索引加子查询的方式进行优化
+
+## count优化
+
+无优化方案，自己做一个计数器，计算数据插入删除
+
+在计数的时候不计数 null 值
+
+尽量使用 count(*) 对这个进行了优化
+
+## update数据优化
+
+InnoDB的行锁是针对索引加的锁，不是针对记录加的锁 ,并且该索引不能失效，否则会从行锁 升级为表锁 。
+
+# 视图
+
+视图（View）是一种虚拟存在的表。视图中的数据并不在数据库中实际存在，行和列数据来自定义视图的查询中使用的表，并且是在使用视图时动态生成的。
+
+~~~sql
+-- 创建
+CREATE [OR REPLACE] VIEW 视图名称[(列名列表)] AS SELECT语句 [WITH [CASCADED | LOCAL ] CHECK OPTION ]
+
+-- 查询
+查看创建视图语句：SHOW CREATE VIEW 视图名称;
+查看视图数据：SELECT * FROM 视图名称 ...... ;
+
+-- 修改
+方式一：CREATE [OR REPLACE] VIEW 视图名称[(列名列表)] AS SELECT语句 [ WITH
+[ CASCADED | LOCAL ] CHECK OPTION ]
+方式二：ALTER VIEW 视图名称[(列名列表)] AS SELECT语句 [ WITH [ CASCADED |
+LOCAL ] CHECK OPTION ]
+
+-- 删除
+1 DROP VIEW [IF EXISTS] 视图名称 [,视图名称] ..
+~~~
+
+### 视图检查选项
+
+**WITH [ CASCADED | LOCAL ]  CHECK OPTION**：在创建视图的时候添加，在对视图进行数据操作时，对该条件进行检查
+
+- CASCADED ：级联，检查所有父视图的检查选项，当父视图只有条件没有指定with check ，也会强制检查
+- LOCAL ：本地，只检查当前视图的检查选项，当相关视图只有条件没有指定with check ，也会强制检查
+
+###  视图更新及作用
+
+更新注意
+
+在更新时，视图中的数据必须与基表数据保持一对一关系
+
+# 存储过程
+
+## 基本语法
+
+### 创建
+
+~~~sql
+CREATE PROCEDURE 存储过程名称 ([ 参数列表 ])
+BEGIN
+-- SQL语句
+END ;
+~~~
+
+### 调用
+
+~~~sql
+CALL 名称 ([ 参数 ]);
+~~~
+
+### 查看
+
+~~~sql
+SELECT * FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA = 'xxx'; -- 查询指
+定数据库的存储过程及状态信息
+SHOW CREATE PROCEDURE 存储过程名称 ; -- 查询某个存储过程的定义
+~~~
+
+### 删除
+
+~~~sql
+DROP PROCEDURE [ IF EXISTS ] 存储过程名称 ;
+~~~
+
+## 变量
+
+变量分为三种类型: 系统变量、用户定义变量、局部变量。
+
+### 系统变量
+
+MySQL服务器提供，不是用户定义的，属于服务器层面。分为全局变量（GLOBAL）、会话变量（SESSION）
+
+#### 基本使用语法
+
+~~~sql
+/*查看系统变量*/
+SHOW [ SESSION | GLOBAL ] VARIABLES ; -- 查看所有系统变量
+SHOW [ SESSION | GLOBAL ] VARIABLES LIKE '......'; -- 可以通过LIKE模糊匹配方式查找变量
+SELECT @@[SESSION | GLOBAL] 系统变量名; -- 查看指定变量的值
+
+/*设置系统变量*/
+-- 默认是SESSION，会话变量。
+SET [ SESSION | GLOBAL ] 系统变量名 = 值 ;
+SET @@[SESSION | GLOBAL]系统变量名 = 值 ;
+
+~~~
+
+### 用户定义变量
+
+#### 基本使用语法
+
+~~~sql
+-- 赋值
+SET @var_name = expr [, @var_name = expr] ... ;
+SET @var_name := expr [, @var_name := expr] ... ;
+SELECT @var_name := expr [, @var_name := expr] ... ;
+SELECT 字段名 INTO @var_name FROM 表名;
+
+-- 使用
+SELECT @var_name ;
+~~~
+
+*用户定义的变量无需对其进行声明或初始化，只不过获取到的值为NULL。*
+
+### 局部变量
+
+在局部生效的变量，访问之前，需要DECLARE声明。可用作存储过程内的 局部变量和输入参数，局部变量的范围是在其内声明的BEGIN ... END块。
+
+#### 基本使用语法
+
+~~~sql
+-- 声明
+DECLARE 变量名 变量类型 [DEFAULT ... ] ;
+
+-- 赋值
+SET 变量名 = 值 ;
+SET 变量名 := 值 ;
+SELECT 字段名 INTO 变量名 FROM 表名 ... ;
+~~~
+
+## if 判断
+
+~~~sql
+IF 条件1 THEN
+.....
+ELSEIF 条件2 THEN -- 可选
+.....
+ELSE -- 可选
+.....
+END IF;
+-- ELSE IF 结构可以有多个，也可以没有。 ELSE结构可以有，也可以没有。
+~~~
+
+## 参数
+
+主要分为以下三种：IN、OUT、INOUT。 
+
+- IN 该类参数作为输入，也就是需要调用时传入值 默认
+- OUT 该类参数作为输出，也就是该参数可以作为返回值
+- INOUT 既可以作为输入参数，也可以作为输出参数
+
+## case
+
+~~~sql
+-- 方式一
+CASE case_value
+WHEN when_value1 THEN statement_list1
+[ WHEN when_value2 THEN statement_list2] ...
+[ ELSE statement_list ]
+END CASE;
+
+-- 方式二
+CASE
+WHEN search_condition1 THEN statement_list1
+[WHEN search_condition2 THEN statement_list2] ...
+[ELSE statement_list]
+END CASE
+~~~
+
+## while
+
+~~~sql
+WHILE 条件 DO
+	SQL逻辑...
+END WHILE;
+~~~
+
+## repeat
+
+~~~sql
+REPEAT
+    SQL逻辑...
+    UNTIL 条件
+END REPEAT;
+~~~
+
+## loop
+
+LOOP 实现简单的循环，如果不在SQL逻辑中增加退出循环的条件，可以用其来实现简单的死循环。 LOOP可以配合一下两个语句使用： 
+
+- LEAVE ：配合循环使用，退出循环。 
+- ITERATE：必须用在循环中，作用是跳过当前循环剩下的语句，直接进入下一次循环。
+
+~~~sql
+[begin_label:] LOOP
+	SQL逻辑...
+END LOOP [end_label];
+
+LEAVE label; -- 退出指定标记的循环体
+ITERATE label; -- 直接进入下一次循环
+~~~
+
+## 游标
+
+游标（CURSOR）是用来存储查询结果集的数据类型
+
+先声明普通变量，在声明游标
+
+~~~sql
+-- 声明
+DECLARE 游标名称 CURSOR FOR 查询语句 ;
+
+-- 打开
+OPEN 游标名称 ;
+
+-- 获取
+FETCH 游标名称 INTO 变量 [, 变量 ] ;
+
+-- 关闭
+CLOSE 游标名称 ;
+~~~
+
+## 条件处理程序
+
+条件处理程序（Handler）可以用来定义在流程控制结构执行过程中遇到问题时相应的处理步骤。
+
+~~~sql
+DECLARE handler_action HANDLER FOR condition_value [, condition_value]... statement ;
+
+-- handler_action 的取值：
+CONTINUE: 继续执行当前程序
+EXIT: 终止执行当前程序
+
+-- condition_value 的取值：
+SQLSTATE sqlstate_value: 状态码，如 02000
+SQLWARNING: 所有以01开头的SQLSTATE代码的简写
+NOT FOUND: 所有以02开头的SQLSTATE代码的简写
+SQLEXCEPTION: 所有没有被SQLWARNING 或 NOT FOUND捕获的SQLSTATE代码的简写
+~~~
+
+## 存储函数
+
+存储函数是有返回值的存储过程，存储函数的参数只能是IN类型的。
+
+~~~sql
+CREATE FUNCTION 存储函数名称 ([ 参数列表 ])
+RETURNS type [characteristic ...]
+BEGIN
+-- SQL语句
+RETURN ...;
+END ;
+~~~
+
+characteristic说明： 
+
+- DETERMINISTIC：相同的输入参数总是产生相同的结果
+- NO SQL ：不包含 SQL 语句
+- READS SQL DATA：包含读取数据的语句，但不包含写入数据的语句。
+
+# 触发器
+
+mysql只支持行级触发，不支持语句级触发。
+
+触发器的这种特性可以协助应用在数据库端确保数据的完整性 , 日志记录 , 数据校验等操作
+
+## 基本语法
+
+~~~sql
+-- 创建
+CREATE TRIGGER trigger_name
+BEFORE/AFTER INSERT/UPDATE/DELETE
+ON tbl_name FOR EACH ROW -- 行级触发器
+BEGIN
+	trigger_stmt ;
+END;
+
+-- 查看
+SHOW TRIGGERS ;
+
+-- 删除
+DROP TRIGGER [schema_name.]trigger_name ; -- 如果没有指定 schema_name，默认为当前数据库 。
+~~~
+
+# 锁
+
+## 全局锁
+
+对整个数据库实例加锁，加锁后整个实例就处于只读状态
+
+主要用于对数据库进行备份
+
+~~~sql
+-- 加锁
+flush tables with read lock ;
+
+-- 解锁
+unlock tables ;
+
+-- 数据备份
+$ mysqldump -uroot –p1234 itcast > itcast.sql
+~~~
+
+## 表级锁
+
+表级锁，每次操作锁住整张表。锁定粒度大，发生锁冲突的概率最高，并发度最低。
+
+表级锁，有三种分类：表锁、元数据锁、意向锁
+
+### 表锁
+
+~~~sql
+-- 加锁：
+lock tables 表名... read/write。
+
+-- 释放锁：
+unlock tables 
+~~~
+
+读锁：别的客户端不能写入，但可以读
+
+写锁：别的客户端不能写，也不能读
+
+### 元数据锁
+
+加锁过程系统自动控制，在访问一张表的时候会自动加上。
+
+MDL锁主要作用：
+
+- 维护表元数据的数据一致性，在表上有活动事务的时候，不可以对元数据进行写入操作
+- 为了避免DML与DDL冲突，保证读写的正确性。
+- 某一张表涉及到未提交的事务时，是不能够修改这张表的表结构的。
+
+MySQL5.5中引入了MDL，当对一张表进行增删改查的时候，加MDL读锁(共享)；当对表结构进行变 更操作的时候，加MDL写锁(排他)。
+
+查看锁
+
+~~~sql
+# 查看所有锁
+select object_type,object_schema,object_name,lock_type,lock_duration fromperformance_schema.metadata_locks ;
+
+~~~
+
+
+
+### 意向锁
+
+为了避免DML在执行时，加的行锁与表锁的冲突，在InnoDB中引入了意向锁，使得表锁不用检查每行数据是否加锁，使用意向锁来减少表锁的检查。
+
+分类：
+
+- 意向共享锁(IS): 由语句select ... lock in share mode添加 。 与 表锁共享锁 (read)兼容，与表锁排他锁(write)互斥。 
+- 意向排他锁(IX): 由insert、update、delete、select...for update添加 。与表锁共 享锁(read)及排他锁(write)都互斥，意向锁之间不会互斥。
+
+### 行级锁
+
+锁对应的行数据，每次操作锁住对应的行数据。锁定粒度最小，发生锁冲突的概率最低，并发度最高。应用在 InnoDB存储引擎中。
+
+- 对于行级锁，主要分为以下三类：
+  1. 行锁：
+     - 锁定单个行记录的锁，防止其他事务对此行进行update和delete。
+     - 在RC、RR隔离级别下都支持。
+  2. 间隙锁（Gap Lock）：
+     - 锁定索引记录间隙（不含该记录），确保索引记录间隙不变，防止其他事务在这个间隙进行insert，产生幻读。
+     - 在RR隔离级别下都支持。
+  3. 临键锁（Next-Key Lock）：
+     - 行锁和间隙锁组合，同时锁住数据，并锁住数据前面的间隙Gap。
+     - 在RR隔离级别下支持。
+
+#### 行锁
+
+InnoDB实现了以下两种类型的行锁 ：
+
+- 共享锁（S）：允许一个事务去读一行，阻止其他事务获得相同数据集的排它锁。
+- 排他锁（X）：允许获取排他锁的事务更新数据，阻止其他事务获得相同数据集的共享锁和排他锁。
+
+注意：
+
+- 仅当共享锁和共享锁共存时兼容
+- 其他情况兼不兼容
+
+下面我们给出不同SQL语句相对应的行锁级别：
+
+| SQL                           | 行锁类型 | 说明                                     |
+| ----------------------------- | -------- | ---------------------------------------- |
+| INSERT                        | 排他锁   | 自动加锁                                 |
+| UPDATE                        | 排他锁   | 自动加锁                                 |
+| DELETE                        | 排他锁   | 自动加锁                                 |
+| SELECT                        | 不加锁   |                                          |
+| SELECT ... LOCK IN SHARE MOOE | 共享锁   | 需要手动在SELECT之后加LOCK IN SHARE MODE |
+| SELECT ... FOR UPDATE         | 排他锁   | 需要手动在SELECT之后加FOR UPDATE         |
+
+行锁特点：
+
+- 默认情况下，InnoDB在 REPEATABLE READ事务隔离级别运行，InnoDB使用 next-key 锁进行搜索和索引扫描，以防止幻读。
+- 针对唯一索引进行检索时，对已存在的记录进行等值匹配时，将会自动优化为行锁。
+- InnoDB的行锁是针对于索引加的锁，不通过索引条件检索数据，那么InnoDB将对表中的所有记录加锁，此时就会升级为表锁。
+
+#### 间隙锁&临键锁
+
+默认情况下，InnoDB在 REPEATABLE READ事务隔离级别运行，InnoDB使用 next-key 锁进行搜索和索引扫描，以防止幻读。
+
+一般出现上述锁有以下三种情况：
+
+- 索引上的等值查询(唯一索引)，给不存在的记录加锁时, 优化为间隙锁 。
+- 索引上的等值查询(非唯一普通索引)，向右遍历时最后一个值不满足查询需求时，next-keylock 退化为间隙锁。
+- 索引上的范围查询(唯一索引)--会访问到不满足条件的第一个值为止。
+
+注意：
+
+- 间隙锁唯一目的是防止其他事务插入间隙。间隙锁可以共存，一个事务采用的间隙锁不会阻止另一个事务在同一间隙上采用间隙锁。
