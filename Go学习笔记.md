@@ -167,7 +167,7 @@ value<- 变量名
 当channel关闭后，不能再写入数据，只能读数据
 
 ~~~go
-//使用内置幻术close可以关闭channel
+//使用内置函数close可以关闭channel
 close(channelName)
 ~~~
 
@@ -255,4 +255,6 @@ var(
 Valueof 和 Typeof
 
 
+
+# 微服务
 
