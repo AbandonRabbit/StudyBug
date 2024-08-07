@@ -250,11 +250,120 @@ var(
 
 先创建一个新的数组，将旧的数组内容 copy 过去，然后将新添加的内容追加过去，再将旧的数组删除，最后将指针指向新的数组
 
+## 泛型
+
+在1.18版本加入了对泛型的支持，泛型是为了解决执行逻辑与类型无关的问题，
+
+### 泛型方法
+
+~~~go
+func Sum[T int | float64](a, b T) T {
+   return a + b
+}
+~~~
+
+> **类型形参**：T就是一个类型形参，形参具体是什么类型取决于传进来什么类型
+>
+> **类型约束**：`int | float64`构成了一个类型约束，这个类型约束内规定了哪些类型是允许的，约束了类型形参的类型范围
+>
+> **类型实参**：`Sum[int](1,2)`，手动指定了`int`类型，`int`就是类型实参。
+
+### 泛型结构
+
+~~~go
+//切片
+type GenericSlice[T int | int32 | int64] []T
+GenericSlice[int]{1, 2, 3} //使用时就不能省略掉类型实参
+~~~
+
+
+
+
+
 ## 反射reflect
 
 Valueof 和 Typeof
 
+~~~go
+str := "hello world!"
+//获取变量的完整类型信息_会指出是那个包里面的某个类型
+reflectType := reflect.TypeOf(str)
+//获取变量的基本类型信息
+reflectType := reflect.TypeOf(str).Kind()
+//获取数据结构所存储的元素类型，必须是指针，切片，数组，通道，映射表其中之一
+reflectType := reflect.TypeOf(str).Elem()
+//获取对应类型所占的字节大小
+reflect.TypeOf(0).Size()
 
+//获取值
+reflectValue := reflect.ValueOf(str)
+//获取反射值原有的值
+func (v Value) Interface() (i any)
+//设置值
+func (v Value) Set(x Value)
+
+
+~~~
+
+### 函数反射和调用
+
+~~~go
+func Max(a, b int) int {
+   if a > b {
+      return a
+   }
+   return b
+}
+
+func main() {
+   rType := reflect.TypeOf(Max)
+   // 输出函数名称,字面量函数的类型没有名称
+   fmt.Println(rType.Name())
+   // 输出参数，返回值的数量
+   fmt.Println(rType.NumIn(), rType.NumOut())
+   rParamType := rType.In(0)
+   // 输出第一个参数的类型
+   fmt.Println(rParamType.Kind())
+   rResType := rType.Out(0)
+   // 输出第一个返回值的类型
+   fmt.Println(rResType.Kind())
+    
+    
+     // 获取函数的反射值
+   rType := reflect.ValueOf(Max)
+   // 传入参数数组
+   rResValue := rType.Call([]reflect.Value{reflect.ValueOf(18), reflect.ValueOf(50)})
+   for _, value := range rResValue {
+      fmt.Println(value.Interface())
+   }
+}
+~~~
+
+
+
+
+
+## 文件操作
+
+go1.16之后 ioutil 包被迁移到了 io 和 os 包中
+
+Go文件操作的基础数据类型支持是 []byte
+
+### 打开
+
+常见的两种打开文件的方式是使用`os`包提供的两个函数，`Open`函数返回值一个文件指针和一个错误，
+
+```go
+func Open(文件名 string) (*File, error)
+```
+
+后者`OpenFile`能够提供更加细粒度的控制，实际上`Open`函数就是对`OpenFile`函数的一个简单封装。
+
+```go
+func OpenFile(name string, flag int, perm FileMode) (*File, error)
+```
+
+先来介绍第一种使用方法，直接提供对应的文件名即可，代码如下
 
 # 微服务
 

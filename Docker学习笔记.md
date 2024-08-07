@@ -43,7 +43,7 @@ docker run 创建并运行一个容器，-d 让容器在后台运行
 
 查看当前容器运行状态
 # docker ps
-
+  -a 打印所有容器
 删除容器
 # docker rm
 
@@ -118,11 +118,13 @@ docker run 创建并运行一个容器，-d 让容器在后台运行
 
 # k8s
 
+## 核心组件
+
 node：一个物理机或虚拟机，在这上面可以运行一个或多个pod
 
 pod：最小的调度单元，一个或者多个应用容器的组合，容器运行环境
 
-svc：将一组pod封装成一个服务，使这个服务可以通过一个固定的入口来访问
+svc：service 将一组pod封装成一个服务，使这个服务可以通过一个固定的入口来访问
 
 node:port ：外部服务，在节点上开放一个端口，将这个端口映射到svc的ip地址和端口上
 
@@ -138,9 +140,89 @@ Deployment：定义和管理应用程序的副本数量，当有副本发生故�
 
 StatefulSet：和Deployment类似，保证每个副本都有自己稳定的网络标识符和持久化存储
 
-## 架构
+# 架构
 
-Master-Worker架构
+## Master-Worker架构
 
 Master-node负责管理整个集群，Worker-node负责应用程序和服务
+
+### Worker-node
+
+每个节点包含三个组件 kubelet、kube-proxy、container-runtime
+
+#### **container-runtime**：
+
+简单理解为一个运行容器的软件，负责拉去容器镜像，创建容器，启动或停止容器，所有的容器都需要使用容器运行时来运行
+
+常用的容器运行时有 Docker-Engine、Containerd、CRI-O、Mirantis Container Runtime
+
+#### **kubelete**：
+
+管理和维护每个节点上的Pod，并确保他们按照预期运行，可以定期从api-server组件接收新的或者修改后的Pod规范，监控工作节点的运行情况，然后将这些信息汇报给apiserver
+
+#### **kube-proxy**：
+
+负责为Pod对象提供网络代理和负载均衡服务
+
+通常情况下Kubernetes集群包含多个节点，这些节点之间通过Service来进行通信，这就需要一个负载均衡器来接收请求，然后将请求发送到不同的节点上完成负载均衡，该功能就是由 kube-proxy 负责
+
+### Master-node
+
+4个基本组件：kube- apiserver、etcd、ControllerManager、Scheduler
+
+#### kube- apiserver
+
+它负责提供Kubernetes集群的API接口服务，所有的组件都会通过这个接口来进行通信，还负责对所有资源对象的 增 删 改 查 等操作进行认证授权和访问控制。
+
+#### Scheduler：
+
+调度器，它负责监控集群中所有节点的资源使用情况，根据调度策略将Pod调度到合适的节点上运行
+
+#### Controller Manager：
+
+管理集群中各种资源对象的状态
+
+#### etcd：
+
+高可用键值存储系统
+
+#### Cloud Controller Manager：（如果用云服务商提供的Kubernetes集群会有这个东西）
+
+云控制器管理器，是一个云平台相关的控制器，负责与云平台的 API 进行交互
+
+### minikube 和 kubectl
+
+minikube ：轻量级k8s发行版，搭建k8s环境
+
+kubectl ：和集群环境进行交互的命令行工具
+
+
+
+multipas常用命令
+
+~~~
+# 查看帮助
+multipass help
+multipass help <command>
+# 创建⼀个名字叫做k3s的虚拟机
+multipass launch --name k3s
+# 在虚拟机中执⾏命令
+multipass exec k3s -- ls -l
+# 进⼊虚拟机并执⾏shell
+multipass shell k3s
+# 查看虚拟机的信息
+multipass info k3s
+# 停⽌虚拟机
+multipass stop k3s
+# 启动虚拟机
+multipass start k3s
+# 删除虚拟机
+multipass delete k3s
+# 清理虚拟机
+multipass purge
+# 查看虚拟机列表
+multipass list
+# 创建一台虚拟机
+multipass launch --name k3s --cpus 2 --memory 4G --disk 10G
+~~~
 
