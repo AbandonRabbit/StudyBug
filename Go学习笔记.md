@@ -365,5 +365,120 @@ func OpenFile(name string, flag int, perm FileMode) (*File, error)
 
 先来介绍第一种使用方法，直接提供对应的文件名即可，代码如下
 
+
+
+# go语言中的context
+
+
+
 # 微服务
+
+
+
+# 网络编程
+
+## TCP编程
+
+**TCP协议： **传输控制协议/网际协议，是一种面向连接（连接导向）的、可靠的、基于字节流的传输层通信协议。一个TCP服务端可以同时连接很多个客户端
+
+TCP服务端程序的处理流程：
+
+> 1. 监听端口
+> 2. 接收客户端请求建立链接
+> 3. 创建goroutine处理链接。 
+
+~~~go
+//设置协议和监听端口
+listen, err := net.Listen("tcp", "127.0.0.1:20000")
+
+//建立链接
+conn, err := listen.Accept()
+
+//发送数据
+conn.Write([]byte(str))
+
+//关闭链接
+conn.Close()
+
+~~~
+
+TCP客户端进行TCP通信的流程
+
+> 1. 建立与服务端的链接
+> 2. 进行数据收发
+> 3. 关闭链接
+
+~~~go
+//创建链接  返回一个Conn接口对象  对
+conn, err := net.Dial("tcp", "127.0.0.1:20000")
+~~~
+
+## UDP编程
+
+**UDP协议：**用户数据报协议，一种无连接的传输层协议，不需要建立连接就能直接进行数据发送和接收，属于不可靠的、没有时序的通信，但是UDP协议的实时性比较好，通常用于视频直播相关领域。
+
+UDP服务端
+
+~~~go
+//创建链接
+listen, err := net.ListenUDP("udp", &net.UDPAddr{
+	IP:   net.IPv4(0, 0, 0, 0),
+	Port: 30000,
+})
+~~~
+
+`"udp"` ：指定网络类型，可以是`"udp"`, `"udp4"`, 或 `"udp6"`，
+
+`net.UDPAddr`结构体包含以下字段：
+
+- **`IP`**: 监听的本地IP地址。在这里，`net.IPv4(0, 0, 0, 0)`表示`0.0.0.0`，即监听所有可用的网络接口（可以接收来自任何本地IP地址的数据）。
+- **`Port`**: 监听的端口号，这里指定为`30000`。
+- **`Zone`**: 适用于IPv6的作用域标识符，这里没有使用，可以忽略。
+
+~~~go
+//接收数据
+n, addr, err := listen.ReadFromUDP(data[:])
+// 发送数据
+_, err = listen.WriteToUDP(data[:n], addr) 
+//关闭链接
+listen.Close()
+~~~
+
+UDP客户端
+
+~~~go
+//创建一个UDP链接
+socket, err := net.DialUDP("udp", nil, &net.UDPAddr{
+	IP:   net.IPv4(0, 0, 0, 0),
+	Port: 30000,
+})
+~~~
+
+**`net.DialUDP("udp", nil, &net.UDPAddr{...})`**:
+
+- `net.DialUDP`是`net`包中的一个函数，用于创建并返回一个UDP连接（`*net.UDPConn`）。
+- 第一个参数`"udp"`指定了网络类型，可以是`"udp"`, `"udp4"`, 或 `"udp6"`，这里指定的是`"udp"`，表示使用UDP协议。
+
+**`nil`**:
+
+- 第二个参数是本地地址（`laddr`），可以指定本地IP地址和端口。如果传递`nil`，表示让系统自动选择一个本地地址和端口。
+
+**`&net.UDPAddr{...}`**:
+
+- 第三个参数是远程地址（`raddr`），是一个指向`net.UDPAddr`结构体的指针，用于指定远程服务器的IP地址和端口。
+
+- `net.UDPAddr`
+  
+  结构体包含三个字段：
+
+  - `IP`: 远程服务器的IP地址。在这里使用`net.IPv4(0, 0, 0, 0)`表示任意IP地址，即所有可用的网络接口。
+  - `Port`: 远程服务器的端口号，这里指定为`30000`。
+  - `Zone`: 用于IPv6地址的作用域标识符，这里没有使用，可以忽略。
+
+~~~go
+//发送数据
+_, err = socket.Write(sendData)
+//接受数据
+n, remoteAddr, err := socket.ReadFromUDP(data)
+~~~
 
