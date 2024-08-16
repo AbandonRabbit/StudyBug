@@ -350,14 +350,6 @@ func OpenFile(name string, flag int, perm FileMode) (*File, error)
 
 
 
-# go语言中的context
-
-
-
-# 微服务
-
-
-
 # 网络编程
 
 **端口分类**
@@ -493,3 +485,147 @@ n, remoteAddr, err := socket.ReadFromUDP(data)
 
 可以自己定义一个协议，比如数据包的前4个字节为包头，里面存储的是发送的数据的长度。
 
+
+
+# 常用标准库
+
+## fmt
+
+### Print  打印输出
+
+~~~go
+func Print(a ...interface{}) (n int, err error)	//直接输出
+func Printf(format string, a ...interface{}) (n int, err error)//格式化输出
+func Println(a ...interface{}) (n int, err error)//输出一行
+~~~
+
+### Fprint  向 io.Writer 中输出
+
+~~~go
+func Fprint(w io.Writer, a ...interface{}) (n int, err error)
+func Fprintf(w io.Writer, format string, a ...interface{}) (n int, err error)
+func Fprintln(w io.Writer, a ...interface{}) (n int, err error) 
+~~~
+
+### Sprint  返回字符串
+
+~~~go
+func Sprint(a ...interface{}) string
+func Sprintf(format string, a ...interface{}) string
+func Sprintln(a ...interface{}) string
+~~~
+
+### Errorf  返回包含格式化字符串的错误
+
+```go
+func Errorf(format string, a ...interface{}) error 
+```
+
+### Scan  将输入数据读入到参数列表中，返回成功扫描的数据个数和遇到的任何错误。
+
+~~~go
+func Scan(a ...interface{}) (n int, err error)  //用空格分开
+func Scanf(format string, a ...interface{}) (n int, err error)//格式化读入
+func Scanln(a ...interface{}) (n int, err error) //遇到换行时才停止扫描
+~~~
+
+### Fscan  从io.Reader中读取数据。
+
+```go
+func Fscan(r io.Reader, a ...interface{}) (n int, err error)
+func Fscanln(r io.Reader, a ...interface{}) (n int, err error)
+func Fscanf(r io.Reader, format string, a ...interface{}) (n int, err error)
+```
+
+### Sscan  从指定字符串中读取数据
+
+```go
+func Sscan(str string, a ...interface{}) (n int, err error)
+func Sscanln(str string, a ...interface{}) (n int, err error)
+func Sscanf(str string, format string, a ...interface{}) (n int, err error)
+```
+
+## time
+
+### 时间操作
+
+~~~go
+func (t Time) Add(d Duration) Time //时间+时间间隔
+func (t Time) Sub(u Time) Duration //求两个时间之间的差值
+func (t Time) Equal(u Time) bool   //判断两个时间是否相同，会考虑时区的影响
+func (t Time) Before(u Time) bool  //t代表的时间点在u之前，返回真
+func (t Time) After(u Time) bool   //t代表的时间点在u之后，返回真
+~~~
+
+### 定时器
+
+~~~go
+Time.Tick(时间间隔)  //定时器 返回一个channel，这个channel每隔一段时间会被读出
+~~~
+
+时间按格式化
+
+~~~go
+2006年1月2号15点04分
+    fmt.Println(now.Format("2006-01-02 15:04:05.000 Mon Jan"))
+    // 12小时制
+    fmt.Println(now.Format("2006-01-02 03:04:05.000 PM Mon Jan"))
+    fmt.Println(now.Format("2006/01/02 15:04"))
+    fmt.Println(now.Format("15:04 2006/01/02"))
+    fmt.Println(now.Format("2006/01/02"))
+~~~
+
+## IO操作
+
+### 终端操作底层原理
+
+终端其实是一个文件，相关实例如下：
+
+- `os.Stdin`：标准输入的文件实例，类型为`*File`
+- `os.Stdout`：标准输出的文件实例，类型为`*File`
+- `os.Stderr`：标准错误输出的文件实例，类型为`*File`
+
+```go
+//以文件的方式操作终端
+func main() {
+    var buf [16]byte
+    os.Stdin.Read(buf[:])
+    os.Stdin.WriteString(string(buf[:]))
+}
+```
+
+### 文件操作
+
+- ` func Create(name string) (file *File, err Error)  ` 
+  - 根据提供的文件名创建新的文件，返回一个文件对象，默认权限是0666
+  
+- `func NewFile(fd uintptr, name string) *File` 
+  - 根据文件描述符创建相应的文件，返回一个文件对象
+  
+- `func Open(name string) (file *File, err Error)  ` 
+  - 只读方式打开一个名称为name的文件
+  
+- `func OpenFile(name string, flag int, perm uint32) (file *File, err Error)  `
+  - 打开名称为name的文件，flag是打开的方式，只读、读写等，perm是权限
+  
+- ` func (file *File) Write(b []byte) (n int, err Error) ` 
+  - 写入byte类型的信息到文件
+  
+- ` func (file *File) WriteAt(b []byte, off int64) (n int, err Error) ` 
+  - 在指定位置开始写入byte类型的信息
+  
+- `  func (file *File) WriteString(s string) (ret int, err Error)  `
+
+  - 写入string信息到文件
+
+- `  func (file *File) Read(b []byte) (n int, err Error)  `
+
+  - 读取数据到b中
+
+- `func (file *File) ReadAt(b []byte, off int64) (n int, err Error)  `
+
+  - 从off开始读取数据到b中
+
+- `  func Remove(name string) Error  `
+
+  - 删除文件名为name的文件
