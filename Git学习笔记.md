@@ -146,7 +146,7 @@ git push
 
 ~~~Git
 Host github.com
-HostName github.con
+HostName github.com
 PreferredAuthentications publickey
 IdentityFile ~/.ssh/name
 ~~~

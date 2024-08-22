@@ -629,3 +629,33 @@ func main() {
 - `  func Remove(name string) Error  `
 
   - 删除文件名为name的文件
+
+# go web编程
+
+## hello word
+
+~~~go
+func main() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello World"))
+	})
+	http.ListenAndServe(":8080", nil)
+}
+~~~
+
+## 创建 web server
+
+~~~go
+// 第一个参数为监听地址，第二个参数为handle
+http.ListenAndServe(":8080", nil)
+
+//方法二  通过结构体创建，会更加灵活
+server := &http.Server{
+    Addr:    ":8080",
+	Handler: nil,
+}
+server.ListenAndServe()
+
+如果想支持https 使用 ListenAndServeTLS方法
+~~~
+
